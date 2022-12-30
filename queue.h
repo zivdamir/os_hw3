@@ -6,7 +6,7 @@
 #define WEBSERVER_FILES_QUEUE_H
 
 
-class queue{
+struct queue{
 
 };
 
