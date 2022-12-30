@@ -46,7 +46,7 @@ int dequeue(Queue q,int process_fd){
 	{
 		return -1;
 	}
-	else return
+	else return 1;
 } // pop from head
 void remove_from_queue(Queue q, int process_fd){
 
