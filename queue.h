@@ -12,7 +12,7 @@ typedef struct queue{
 }*Queue;
 
 Queue init_Queue();
-int get_size(Queue q);
+int getQueueSize(Queue q);
 void enqueue(Queue q,int process_fd);  // push from tail
 int dequeue(Queue q,int process_fd); // pop from head
 void remove_from_queue(Queue q, int process_fd);//remove specific instance
