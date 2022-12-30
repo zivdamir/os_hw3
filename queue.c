@@ -55,5 +55,14 @@ void destroyQueue(Queue q){
 }
 int getQueueSize(Queue q);
 {
-
+    int count =0;
+    if(q->next== NULL ) return count;
+    else{
+      curr=q->next;
+      while(curr!=NULL){
+          count++;
+          curr=curr->next;
+      }
+  }
+  return count;
 }
