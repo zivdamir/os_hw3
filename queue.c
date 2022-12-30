@@ -42,11 +42,22 @@ void enqueue(Queue q,int process_fd)  // push from tail
 }
 int dequeue(Queue q,int process_fd){
 	//first get to head..
-	if(q->next == NULL)
-	{
+	if(q->next == NULL) {
 		return -1;
 	}
-	else return 1;
+	Queue prev=q;
+	Queue curr=q->next;
+	while(q->next!=NULL)
+	{
+		prev=curr;
+		curr=curr->next;
+	}
+	prev->next=NULL;
+	int process_head_fd=curr->process_fd;
+	free(curr);
+	return process_head_fd;
+
+
 } // pop from head
 void removeFromQueue(Queue q, int process_fd){
 
