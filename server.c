@@ -49,8 +49,8 @@ int main(int argc, char *argv[])
 	struct sockaddr_in clientaddr;
 
 	/**added by us**/
-    Queue currently_working_queue = init_Queue();
-    Queue currently_waiting_queue = init_Queue();
+    Queue currently_working_queue = initQueue();
+    Queue currently_waiting_queue = initQueue();
 
     struct timeval time;
     int queue_size;
@@ -82,7 +82,7 @@ int main(int argc, char *argv[])
 
         if(currently_working_queue)
         {
-            //push_queue(waiting_q, connfd, arrival, NOT_DISPATCHED);
+            enqueue(currently_waiting_queue, connfd, arrival, NOT_DISPATCHED);
             //pthread_cond_signal(&c);
         }
         else
