@@ -1,5 +1,6 @@
 #include "segel.h"
 #include "request.h"
+#include "queue.h"
 
 // 
 // server.c: A very, very simple web server
@@ -48,7 +49,10 @@ int main(int argc, char *argv[])
 	struct sockaddr_in clientaddr;
 
 	/**added by us**/
-	struct timeval time;
+    Queue currently_working_queue = init_Queue();
+    Queue currently_waiting_queue = init_Queue();
+
+    struct timeval time;
     int queue_size;
     getargs(&port,&threads_num,&queue_size, argc, argv);
 	workers = (ThreadWorker)malloc(sizeof(*workers)*threads_num);
@@ -76,7 +80,7 @@ int main(int argc, char *argv[])
 		connfd = Accept(listenfd, (SA *)&clientaddr, (socklen_t *) &clientlen);
         gettimeofday(&time, NULL);
 
-        if(/*there is space in the ques*/)
+        if(currently_working_queue)
         {
             //push_queue(waiting_q, connfd, arrival, NOT_DISPATCHED);
             //pthread_cond_signal(&c);

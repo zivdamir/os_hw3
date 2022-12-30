@@ -11,11 +11,11 @@ typedef struct queue{
 	struct queue* next;
 }*Queue;
 
-Queue init_Queue();
+Queue initQueue();
 int getQueueSize(Queue q);
 void enqueue(Queue q,int process_fd);  // push from tail
 int dequeue(Queue q,int process_fd); // pop from head
-void remove_from_queue(Queue q, int process_fd);//remove specific instance
-void destroy_Queue(Queue q);
+void removeFromQueue(Queue q, int process_fd);//remove specific instance
+void destroyQueue(Queue q);
 //TODO ADD MORE
 #endif //WEBSERVER_FILES_QUEUE_H

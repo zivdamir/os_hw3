@@ -4,7 +4,7 @@
 #include "queue.h"
 #define DUMMY -1
 // queue is like this : dummy->TAIL->...->...->HEAD->NULL
-Queue init_Queue()
+Queue initQueue()
 {
 	Queue q=(Queue)malloc(sizeof(*q));
 	if (q == NULL )
@@ -48,9 +48,12 @@ int dequeue(Queue q,int process_fd){
 	}
 	else return 1;
 } // pop from head
-void remove_from_queue(Queue q, int process_fd){
+void removeFromQueue(Queue q, int process_fd){
 
 }//remove specific instance
-void destroy_Queue(Queue q){
+void destroyQueue(Queue q){
+}
+int getQueueSize(Queue q);
+{
 
 }
