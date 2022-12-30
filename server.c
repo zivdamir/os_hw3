@@ -82,7 +82,7 @@ int main(int argc, char *argv[])
 
         if(currently_working_queue)
         {
-            enqueue(currently_waiting_queue, connfd, arrival, NOT_DISPATCHED);
+            enqueue(currently_waiting_queue, connfd);
             //pthread_cond_signal(&c);
         }
         else
