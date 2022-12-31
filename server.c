@@ -24,7 +24,16 @@ typedef struct thread_worker
 int threads_num;
 
 // An Array of ThreadWorkers
-ThreadWorker* workers;
+ThreadWorker workers;
+
+// Synchronization mechanism objects
+pthread_cond_t queue_is_not_empty;
+pthread_cond_t queue_has_space;
+pthread_mutex_t waiting_queue_lock;
+
+// Queues
+Queue working_queue;
+Queue waiting_queue;
 
 // HW3: Parse the new arguments too
 void getargs(int *port,int* num_threads,int* queue_size, int argc, char *argv[])
@@ -42,6 +51,20 @@ void getargs(int *port,int* num_threads,int* queue_size, int argc, char *argv[])
 	}
 }
 
+void* threadRequestHandlerWrapper()
+{
+    while(1)
+    {
+        pthread_mutex_lock(&waiting_queue_lock);
+        while(getQueueSize(waiting_queue))
+        {
+
+        }
+        // wait for request;
+        // requestHandle();
+    }
+}
+
 int main(int argc, char *argv[])
 {
     /**received code**/
@@ -49,55 +72,53 @@ int main(int argc, char *argv[])
 	struct sockaddr_in clientaddr;
 
 	/**added by us**/
-    Queue currently_working_queue = initQueue();
-    Queue currently_waiting_queue = initQueue();
+    working_queue = initQueue();
+    waiting_queue = initQueue();
+
+    pthread_mutex_init(&waiting_queue_lock,NULL);
+    pthread_cond_init(&queue_has_space,NULL);
+    pthread_cond_init(&queue_is_not_empty,NULL);
 
     struct timeval time;
     int queue_size;
     getargs(&port,&threads_num,&queue_size, argc, argv);
-	workers = (ThreadWorker)malloc(sizeof(*workers)*threads_num);
+	workers = (ThreadWorker)malloc(sizeof(ThreadWorker)*threads_num);
 	if(workers == NULL)
 	{
 		perror("Malloc failed");
 		exit(0);
 	}
 
-	//create workers
-	//
-	// HW3: Create some threads...
-	//
+    listenfd = Open_listenfd(port);
 
     for(int i = 0; i<threads_num; i++)
     {
-        pthread_create(workers[i]->thread, NULL, threadRequestHandlerWrapper, NULL);
+        pthread_create(&workers[i].thread, NULL, threadRequestHandlerWrapper, NULL);
     }
-
-    listenfd = Open_listenfd(port);
-
 
 	while (1) {
 		clientlen = sizeof(clientaddr);
 		connfd = Accept(listenfd, (SA *)&clientaddr, (socklen_t *) &clientlen);
         gettimeofday(&time, NULL);
 
-        if(currently_working_queue)
+        pthread_mutex_lock(&waiting_queue_lock);
+        if(getQueueSize(waiting_queue)+getQueueSize(working_queue) < queue_size)
         {
-            enqueue(currently_waiting_queue, connfd);
-            //pthread_cond_signal(&c);
+            enqueue(waiting_queue, connfd);
+            pthread_cond_signal(&queue_is_not_empty);
         }
         else
         {
+            pthread_cond_broadcast(&queue_is_not_empty);
+            pthread_cond_wait(&queue_has_space,&waiting_queue_lock);
             //activate no space procedure
         }
-        //
-		// HW3: In general, don't handle the request in the main thread.
-		// Save the relevant info in a buffer and have one of the worker threads
-		// do the work.
-		//
-		//pthread_create(&somethreadfrompool, NULL, requestHandle, connfd);
-		requestHandle(connfd);
 
-		Close(connfd);
+        pthread_mutex_unlock(&waiting_queue_lock);
+
+        //insert to thread function
+        //requestHandle(connfd);
+        //Close(connfd);
 	}
 
 }

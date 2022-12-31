@@ -6,7 +6,7 @@
 #define WEBSERVER_FILES_QUEUE_H
 #include "assert.h"
 
-typedef struct queue{
+typedef struct queue {
 	int process_fd;
 	struct queue* next;
 }*Queue;
@@ -14,8 +14,10 @@ typedef struct queue{
 Queue initQueue();
 int getQueueSize(Queue q);
 void enqueue(Queue q,int process_fd);  // push from tail
-int dequeue(Queue q,int process_fd); // pop from head
+int dequeue(Queue q); // pop from head
 void removeFromQueue(Queue q, int process_fd);//remove specific instance
 void destroyQueue(Queue q);
+void printQueue(Queue q);
+
 //TODO ADD MORE
 #endif //WEBSERVER_FILES_QUEUE_H
