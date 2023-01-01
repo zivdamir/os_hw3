@@ -1,5 +1,5 @@
 #include "segel.h"
-#include "request.h"
+
 #include "queue.h"
 
 // 
@@ -93,6 +93,7 @@ int main(int argc, char *argv[])
 
     for(int i = 0; i<threads_num; i++)
     {
+        //hello
         pthread_create(&workers[i].thread, NULL, threadRequestHandlerWrapper, NULL);
     }
 
