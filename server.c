@@ -118,7 +118,6 @@ int main(int argc, char *argv[])
     pthread_cond_init(&queue_has_space,NULL);
     pthread_cond_init(&queue_is_not_empty,NULL);
 
-    struct timeval time;
     int queue_size;
     getargs(&port,&threads_num,&queue_size,&schedule_algorithm, argc, argv);
 	workers = (ThreadWorker)malloc(sizeof(struct thread_worker)*threads_num);
@@ -155,7 +154,7 @@ int main(int argc, char *argv[])
             {
                 pthread_cond_wait(&queue_has_space,&waiting_queue_lock);
             }
-            else if(strcmp(schedule_algorithm,"drop_tail"))
+            else if(strcmp(schedule_algorithm,"dt"))
             {
                 //close the socket
                 close(connfd);
@@ -164,7 +163,7 @@ int main(int argc, char *argv[])
                 //continue without unlocking again(skip the unlock after the all elses
                 continue;
             }
-            else if(strcmp(schedule_algorithm,"drop_head"))
+            else if(strcmp(schedule_algorithm,"dh"))
             {
                 int head_connfd=dequeue(waiting_queue);
                 if(head_connfd == -1) // meaning the list is empty and
@@ -175,7 +174,7 @@ int main(int argc, char *argv[])
                 }
                 close(head_connfd);
             }
-            else if(strcmp(schedule_algorithm,"drop_random"))
+            else if(strcmp(schedule_algorithm,"random"))
             {
                 assert(0);
             }
