@@ -11,13 +11,12 @@
 // Repeatedly handles HTTP requests sent to this port number.
 // Most of the work is done within routines written in request.c
 // queue waiting requests , queue working reqes
- typedef enum REQUEST_TYPE{STATIC=0,DYNAMIC=1} requestType;
+
 // A thread which handles requests.
 typedef struct thread_worker
 {
 
 	int connfd; // The current client's fd
-    requestType current_request_type; // wether the corrent request is a dynamic/static/.. request
     int id;
     int total_http_requsts;//counting also non-wokring requests trying to handle
     int static_requests_handled_count;//only working requests
@@ -76,18 +75,29 @@ void* threadRequestHandlerWrapper(void* arg)
         int connection_fd=dequeue(waiting_queue);
         //do not wake reader here please!
 
-        //TODO CHECK FOR DEADLOCK SITAUTION
+
         pthread_mutex_unlock(&waiting_queue_lock);
         //enqueue into working queue
         pthread_mutex_lock(&working_queue_lock);
         enqueue(working_queue,connection_fd);
         pthread_mutex_unlock(&working_queue_lock);
 
-        requestHandle(connection_fd);// NEED TO CHAGNE requesthandle code  SO IT'LL check  DYNAMIC STATIC, error, also prints AND SUCH
+        requestType req_type = requestHandle(connection_fd,0.1,0.1,
+                                             workers[id].total_http_requsts,
+                                             id,
+                                             workers[id].static_requests_handled_count,
+                                             workers[id].dynamic_requests_handled_count);// NEED TO CHAGNE requesthandle code  SO IT'LL check  DYNAMIC STATIC, error, also prints AND SUCH
         workers[id].total_http_requsts++;
-        //if no error do things
-        //if static and no error increment static
-        //if dynamic and no error increment dynamic( need to look agian at what errors we dont increment static and dynamic)
+        if(req_type!= ERROR)
+        {
+            if(req_type==STATIC)
+            {
+                workers[id].static_requests_handled_count++;
+            }
+            else{
+                workers[id].dynamic_requests_handled_count++;
+            }
+        }
         pthread_mutex_lock(&working_queue_lock);
         removeFromQueue(working_queue,connection_fd);
         //wake reader if needed
@@ -117,7 +127,7 @@ int main(int argc, char *argv[])
     pthread_mutex_init(&waiting_queue_lock,NULL);
     pthread_cond_init(&queue_has_space,NULL);
     pthread_cond_init(&queue_is_not_empty,NULL);
-
+    struct timeval arrival_time;
     int queue_size;
     getargs(&port,&threads_num,&queue_size,&schedule_algorithm, argc, argv);
 	workers = (ThreadWorker)malloc(sizeof(struct thread_worker)*threads_num);
@@ -140,7 +150,9 @@ int main(int argc, char *argv[])
 	while (1) {
 		clientlen = sizeof(clientaddr);
 		connfd = Accept(listenfd, (SA *)&clientaddr, (socklen_t *) &clientlen);
-        gettimeofday(&time, NULL);
+        gettimeofday(&arrival_time, NULL);
+        double arrival_t = (double) ((double)arrival_time.tv_sec + (double)arrival_time.tv_usec / 1e6);
+        //TODO (to finish): 1)implement time 2)in request.c add printing for statistics. 3) add random sched support 4)for queue add way to find time of arrival by connfd and support with dispatch and arrival for all queue operations
 
         pthread_mutex_lock(&waiting_queue_lock);
         if(getQueueSize(waiting_queue)+getQueueSize(working_queue) < queue_size)
@@ -165,7 +177,7 @@ int main(int argc, char *argv[])
             }
             else if(strcmp(schedule_algorithm,"dh"))
             {
-                int head_connfd=dequeue(waiting_queue);
+                int head_connfd = dequeue(waiting_queue);
                 if(head_connfd == -1) // meaning the list is empty and
                 {
                     close(connfd);

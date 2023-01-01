@@ -152,7 +152,8 @@ void requestServeStatic(int fd, char *filename, int filesize)
 }
 
 // handle a request
-void requestHandle(int fd)
+/** modified by us**/
+requestType requestHandle(int fd,double arrival_time,double dispatch_time, int http_total_count,int thread_id, int static_req_count, int dynamic_req_count)
 {
     //modify here and request error so it'll print what we need TODO
    int is_static;
@@ -169,28 +170,30 @@ void requestHandle(int fd)
 
    if (strcasecmp(method, "GET")) {
       requestError(fd, method, "501", "Not Implemented", "OS-HW3 Server does not implement this method");
-      return;
+      return ERROR;
    }
    requestReadhdrs(&rio);
 
    is_static = requestParseURI(uri, filename, cgiargs);
    if (stat(filename, &sbuf) < 0) {
       requestError(fd, filename, "404", "Not found", "OS-HW3 Server could not find this file");
-      return;
+      return ERROR;
    }
 
    if (is_static) {
       if (!(S_ISREG(sbuf.st_mode)) || !(S_IRUSR & sbuf.st_mode)) {
          requestError(fd, filename, "403", "Forbidden", "OS-HW3 Server could not read this file");
-         return;
+         return ERROR;
       }
       requestServeStatic(fd, filename, sbuf.st_size);
+      return STATIC;
    } else {
       if (!(S_ISREG(sbuf.st_mode)) || !(S_IXUSR & sbuf.st_mode)) {
          requestError(fd, filename, "403", "Forbidden", "OS-HW3 Server could not run this CGI program");
-         return;
+         return ERROR;
       }
       requestServeDynamic(fd, filename, cgiargs);
+      return DYNAMIC;
    }
 }
 

@@ -8,6 +8,8 @@
 
 typedef struct queue {
 	int process_fd;
+    double arrival_time;
+    double dispatch_time;
 	struct queue* next;
 }*Queue;
 //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
