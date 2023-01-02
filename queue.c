@@ -16,10 +16,13 @@ Queue initQueue()
 		//create dummy node for easier implementation
 		q->next=NULL;
 		q->process_fd=DUMMY;
+        gettimeofday(&q->arrival_time,NULL);
+        gettimeofday(&q->dispatch_time,NULL);
+
 	}
 	return q;
 }
-void enqueue(Queue q,int process_fd)  // push from tail
+void enqueue(Queue q,int process_fd,struct timeval arrival_time,struct timeval dispatch_time)  // push from tail
 {
 	//malloc new queue object
 	assert(q != NULL);
@@ -34,9 +37,11 @@ void enqueue(Queue q,int process_fd)  // push from tail
 	Queue curr_tail = q->next;//could be NULL, who cares..
 	q->next = new_obj;
 	new_obj->next = curr_tail;
+    new_obj->arrival_time=arrival_time;
+    new_obj->dispatch_time=dispatch_time;
 }
 int dequeue(Queue q){
-	//first get to head..
+	//first get to head...
 	if(q->next == NULL) {
 		return -1;
 	}
@@ -109,4 +114,19 @@ void printQueue(Queue q)
         iterator = iterator->next;
     }
     printf("end copy rot\n");
+}
+struct timeval* getArrivalTime(Queue q,int process_fd)
+{
+    struct timeval* required_timeval= NULL;
+    Queue curr=q;
+    while(curr!= NULL)
+    {
+        if(curr->process_fd == process_fd)
+        {
+            required_timeval=&curr->arrival_time;
+            break;
+        }
+        curr=curr->next;
+    }
+    return required_timeval;
 }

@@ -35,7 +35,10 @@ void requestError(int fd, char *cause, char *errnum, char *shortmsg, char *longm
    printf("%s", body);
 
 }
+void printStatistics(char* buf,int fd_num, int thread_id,int http_count,int static_count,int dynamic_count,struct timeval arrival_time, struct timeval dispatch_time)
+{
 
+}
 
 //
 // Reads and discards everything up to an empty text line
@@ -153,7 +156,7 @@ void requestServeStatic(int fd, char *filename, int filesize)
 
 // handle a request
 /** modified by us**/
-requestType requestHandle(int fd,double arrival_time,double dispatch_time, int http_total_count,int thread_id, int static_req_count, int dynamic_req_count)
+requestType requestHandle(int fd,struct timeval arrival_time,struct timeval dispatch_time, int http_total_count,int thread_id, int static_req_count, int dynamic_req_count)
 {
     //modify here and request error so it'll print what we need TODO
    int is_static;

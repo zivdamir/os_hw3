@@ -65,24 +65,32 @@ void* threadRequestHandlerWrapper(void* arg)
     int id=*p_id;
     printf("id as argument is %d, id from workers[id] is %d\n",id,workers[id].id);
     assert(workers[id].id == id);//should be the same
+
     while(1)
     {
         pthread_mutex_lock(&waiting_queue_lock);
+
         while(getQueueSize(waiting_queue)==0)
         {
             pthread_cond_wait(&queue_is_not_empty,&waiting_queue_lock);
         }
         int connection_fd=dequeue(waiting_queue);
+        struct timeval dispatch_time;
+        gettimeofday(&dispatch_time,NULL);
         //do not wake reader here please!
+        struct timeval* arrival_time_p= getArrivalTime(waiting_queue,connection_fd);
+        assert(arrival_time_p!= NULL); //can't happen!
+        struct timeval arrival_time=*arrival_time_p;
+
 
 
         pthread_mutex_unlock(&waiting_queue_lock);
         //enqueue into working queue
         pthread_mutex_lock(&working_queue_lock);
-        enqueue(working_queue,connection_fd);
+        enqueue(working_queue,connection_fd,arrival_time,dispatch_time);
         pthread_mutex_unlock(&working_queue_lock);
 
-        requestType req_type = requestHandle(connection_fd,0.1,0.1,
+        requestType req_type = requestHandle(connection_fd,arrival_time,dispatch_time,
                                              workers[id].total_http_requsts,
                                              id,
                                              workers[id].static_requests_handled_count,
@@ -151,13 +159,13 @@ int main(int argc, char *argv[])
 		clientlen = sizeof(clientaddr);
 		connfd = Accept(listenfd, (SA *)&clientaddr, (socklen_t *) &clientlen);
         gettimeofday(&arrival_time, NULL);
-        double arrival_t = (double) ((double)arrival_time.tv_sec + (double)arrival_time.tv_usec / 1e6);
+
         //TODO (to finish): 1)implement time 2)in request.c add printing for statistics. 3) add random sched support 4)for queue add way to find time of arrival by connfd and support with dispatch and arrival for all queue operations
 
         pthread_mutex_lock(&waiting_queue_lock);
         if(getQueueSize(waiting_queue)+getQueueSize(working_queue) < queue_size)
         {
-            enqueue(waiting_queue, connfd);
+            enqueue(waiting_queue, connfd,arrival_time, arrival_time);
             pthread_cond_signal(&queue_is_not_empty);
         }
         else
