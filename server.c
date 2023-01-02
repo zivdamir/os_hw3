@@ -79,7 +79,7 @@ void* threadRequestHandlerWrapper(void* arg)
         gettimeofday(&dispatch_time,NULL);
         //do not wake reader here please!
         struct timeval* arrival_time_p= getArrivalTime(waiting_queue,connection_fd);
-        assert(arrival_time_p!= NULL); //can't happen!
+        assert(arrival_time_p!= NULL); //can't happen!, but still crashes here..TODO
         struct timeval arrival_time=*arrival_time_p;
 
 
