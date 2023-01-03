@@ -26,11 +26,11 @@ void requestError(int fd, char *cause, char *errnum, char *shortmsg, char *longm
 
     printStatistics(buf,fd,thread_id,http_count,static_count,dynamic_count,arrival_time,dispatch_time);
    sprintf(buf, "Content-Type: text/html\r\n");
-   //Rio_writen(fd, buf, strlen(buf));
-   //printf("%s", buf);
+   Rio_writen(fd, buf, strlen(buf));
+   printf("%s", buf);
 
    sprintf(buf, "Content-Length: %lu\r\n\r\n", strlen(body));
-   //Rio_writen(fd, buf, strlen(buf));
+   Rio_writen(fd, buf, strlen(buf));
    printf("%s", buf);
 
    // Write out the content
@@ -127,6 +127,7 @@ void requestServeDynamic(int fd, char *filename, char *cgiargs,int thread_id,int
    sprintf(buf, "HTTP/1.0 200 OK\r\n");
    sprintf(buf, "%sServer: OS-HW3 Web Server\r\n", buf);
     printStatistics(buf,fd,thread_id,http_count,static_count,dynamic_count,arrival_time,dispatch_time);
+    //sprintf(buf,"%s\r\n",buf);
    Rio_writen(fd, buf, strlen(buf));
 
    if (Fork() == 0) {
@@ -160,6 +161,7 @@ void requestServeStatic(int fd, char *filename, int filesize,int thread_id,int h
    sprintf(buf, "%sContent-Length: %d\r\n", buf, filesize);
    sprintf(buf, "%sContent-Type: %s\r\n", buf, filetype);
     printStatistics(buf,fd,thread_id,http_count,static_count,dynamic_count,arrival_time,dispatch_time);
+    sprintf(buf,"%s\r\n",buf);
    Rio_writen(fd, buf, strlen(buf));
 
    //  Writes out to the client socket the memory-mapped file 
