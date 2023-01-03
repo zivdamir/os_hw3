@@ -5,8 +5,9 @@
 #include "segel.h"
 #include "request.h"
 
+void printStatistics(char* buf,int fd_num, int thread_id,int http_count,int static_count,int dynamic_count,struct timeval* arrival_time, struct timeval* dispatch_time);
 // requestError(      fd,    filename,        "404",    "Not found", "OS-HW3 Server could not find this file");
-void requestError(int fd, char *cause, char *errnum, char *shortmsg, char *longmsg,int thread_id,int http_count,int static_count,int dynamic_count,struct timeval arrival_time, struct timeval dispatch_time)
+void requestError(int fd, char *cause, char *errnum, char *shortmsg, char *longmsg,int thread_id,int http_count,int static_count,int dynamic_count,struct timeval* arrival_time, struct timeval* dispatch_time)
 {
    char buf[MAXLINE], body[MAXBUF];
 
@@ -18,16 +19,18 @@ void requestError(int fd, char *cause, char *errnum, char *shortmsg, char *longm
    sprintf(body, "%s<hr>OS-HW3 Web Server\r\n", body);
 
    // Write out the header information for this response
+
    sprintf(buf, "HTTP/1.0 %s %s\r\n", errnum, shortmsg);
    Rio_writen(fd, buf, strlen(buf));
    printf("%s", buf);
 
+    printStatistics(buf,fd,thread_id,http_count,static_count,dynamic_count,arrival_time,dispatch_time);
    sprintf(buf, "Content-Type: text/html\r\n");
-   Rio_writen(fd, buf, strlen(buf));
-   printf("%s", buf);
+   //Rio_writen(fd, buf, strlen(buf));
+   //printf("%s", buf);
 
    sprintf(buf, "Content-Length: %lu\r\n\r\n", strlen(body));
-   Rio_writen(fd, buf, strlen(buf));
+   //Rio_writen(fd, buf, strlen(buf));
    printf("%s", buf);
 
    // Write out the content
@@ -35,18 +38,23 @@ void requestError(int fd, char *cause, char *errnum, char *shortmsg, char *longm
    printf("%s", body);
 
 }
-void printStatistics(char* buf,int fd_num, int thread_id,int http_count,int static_count,int dynamic_count,struct timeval arrival_time, struct timeval dispatch_time)
+void printStatistics(char* buf,int fd_num, int thread_id,int http_count,int static_count,int dynamic_count,struct timeval* arrival_time, struct timeval* dispatch_time)
 {
     struct timeval dispatch_interval;
-    timersub(&arrival_time,&dispatch_time,&dispatch_interval);
-    sprintf(buf,"%sStat-Req-arrival:: %lu.%0.6lu\r\n",buf,arrival_time.tv_sec,arrival_time.tv_usec);
-    sprintf(buf,"%sStat-Req-Dispatch:: %lu.%06lu\r\n",buf,dispatch_interval.tv_sec,dispatch_interval.tv_usec);
-    sprintf(buf,"%sStat-Thread-Id:: %d\r\n",buf,thread_id);
-    sprintf( buf , "%sStat-Thread-Count\r\n",buf,http_count);
-    sprintf(buf,"%sStat-Thread-Static:: %d\r\n",buf,static_count);
-    sprintf(buf,"%sStat-Thread-Dynamic:: %d\r\n\r\n",buf,dynamic_count);
+    timersub(dispatch_time,arrival_time,&dispatch_interval);
+    sprintf(buf,"%sStat-Req-Arrival:: %ld.%06ld\r\n",buf,arrival_time->tv_sec,arrival_time->tv_usec);
 
-    rio_writen(fd_num,buf,strlen(buf));
+    sprintf(buf,"%sStat-Req-Dispatch:: %ld.%06ld\r\n",buf,dispatch_interval.tv_sec,dispatch_interval.tv_usec);
+
+    sprintf(buf,"%sStat-Thread-Id:: %d\r\n",buf,thread_id);
+
+    sprintf( buf , "%sStat-Thread-Count:: %d\r\n",buf,http_count);
+
+    sprintf(buf,"%sStat-Thread-Static:: %d\r\n",buf,static_count);
+
+    sprintf(buf,"%sStat-Thread-Dynamic:: %d\r\n",buf,dynamic_count);
+
+//Rio_writen(fd_num,buf,strlen(buf));
 }
 
 //
@@ -55,7 +63,7 @@ void printStatistics(char* buf,int fd_num, int thread_id,int http_count,int stat
 void requestReadhdrs(rio_t *rp)
 {
    char buf[MAXLINE];
-
+//hello
    Rio_readlineb(rp, buf, MAXLINE);
    while (strcmp(buf, "\r\n")) {
       Rio_readlineb(rp, buf, MAXLINE);
@@ -63,10 +71,7 @@ void requestReadhdrs(rio_t *rp)
    return;
 }
 
-//
-// Return 1 if static, 0 if dynamic content
-// Calculates filename (and cgiargs, for dynamic) from uri
-//
+
 int requestParseURI(char *uri, char *filename, char *cgiargs) 
 {
    char *ptr;
@@ -113,7 +118,7 @@ void requestGetFiletype(char *filename, char *filetype)
       strcpy(filetype, "text/plain");
 }
 
-void requestServeDynamic(int fd, char *filename, char *cgiargs,int thread_id,int http_count,int static_count,int dynamic_count,struct timeval arrival_time, struct timeval dispatch_time)
+void requestServeDynamic(int fd, char *filename, char *cgiargs,int thread_id,int http_count,int static_count,int dynamic_count,struct timeval* arrival_time, struct timeval* dispatch_time)
 {
    char buf[MAXLINE], *emptylist[] = {NULL};
 
@@ -122,7 +127,7 @@ void requestServeDynamic(int fd, char *filename, char *cgiargs,int thread_id,int
    sprintf(buf, "HTTP/1.0 200 OK\r\n");
    sprintf(buf, "%sServer: OS-HW3 Web Server\r\n", buf);
     printStatistics(buf,fd,thread_id,http_count,static_count,dynamic_count,arrival_time,dispatch_time);
-//   Rio_writen(fd, buf, strlen(buf));
+   Rio_writen(fd, buf, strlen(buf));
 
    if (Fork() == 0) {
       /* Child process */
@@ -135,7 +140,7 @@ void requestServeDynamic(int fd, char *filename, char *cgiargs,int thread_id,int
 }
 
 
-void requestServeStatic(int fd, char *filename, int filesize,int thread_id,int http_count,int static_count,int dynamic_count,struct timeval arrival_time, struct timeval dispatch_time)
+void requestServeStatic(int fd, char *filename, int filesize,int thread_id,int http_count,int static_count,int dynamic_count,struct timeval* arrival_time, struct timeval* dispatch_time)
 {
    int srcfd;
    char *srcp, filetype[MAXLINE], buf[MAXBUF];
@@ -153,9 +158,9 @@ void requestServeStatic(int fd, char *filename, int filesize,int thread_id,int h
    sprintf(buf, "HTTP/1.0 200 OK\r\n");
    sprintf(buf, "%sServer: OS-HW3 Web Server\r\n", buf);
    sprintf(buf, "%sContent-Length: %d\r\n", buf, filesize);
-   sprintf(buf, "%sContent-Type: %s\r\n\r\n", buf, filetype);
+   sprintf(buf, "%sContent-Type: %s\r\n", buf, filetype);
     printStatistics(buf,fd,thread_id,http_count,static_count,dynamic_count,arrival_time,dispatch_time);
-  // Rio_writen(fd, buf, strlen(buf));
+   Rio_writen(fd, buf, strlen(buf));
 
    //  Writes out to the client socket the memory-mapped file 
    Rio_writen(fd, srcp, filesize);
@@ -165,7 +170,7 @@ void requestServeStatic(int fd, char *filename, int filesize,int thread_id,int h
 
 // handle a request
 /** modified by us**/
-requestType requestHandle(int fd,struct timeval arrival_time,struct timeval dispatch_time, int http_total_count,int thread_id, int static_req_count, int dynamic_req_count)
+requestType requestHandle(int fd,struct timeval* arrival_time,struct timeval* dispatch_time, int http_total_count,int thread_id, int static_req_count, int dynamic_req_count)
 {
     //modify here and request error so it'll print what we need TODO
    int is_static;

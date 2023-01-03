@@ -20,7 +20,8 @@ int dequeue(Queue q); // pop from head
 void removeFromQueue(Queue q, int process_fd);//remove specific instance
 void destroyQueue(Queue q);
 void printQueue(Queue q);
+int getQueueHead(Queue q);
 struct timeval* getArrivalTime(Queue q,int process_fd);
-
+int* getFdArrayQueue(Queue q);
 //TODO ADD MORE
 #endif //WEBSERVER_FILES_QUEUE_H

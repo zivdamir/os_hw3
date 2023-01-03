@@ -25,7 +25,7 @@ Queue initQueue()
 void enqueue(Queue q,int process_fd,struct timeval arrival_time,struct timeval dispatch_time)  // push from tail
 {
 	//malloc new queue object
-	assert(q != NULL);
+	//assert(q != NULL);
 	Queue new_obj = (Queue)malloc(sizeof(*q));
 	if(new_obj == NULL)
 	{
@@ -65,7 +65,6 @@ void removeFromQueue(Queue q, int process_fd){
     Queue to_delete = NULL;
     while(iterator->next!=NULL)
     {
-
         if(iterator->next->process_fd == process_fd)
         {
             to_delete = iterator->next;
@@ -79,7 +78,7 @@ void removeFromQueue(Queue q, int process_fd){
 }//remove specific instance
 
 void destroyQueue(Queue q){
-    assert(q!=NULL);
+   // assert(q!=NULL);
     Queue iterator = q;
     Queue to_delete = NULL;
     while(iterator!=NULL)
@@ -92,7 +91,7 @@ void destroyQueue(Queue q){
 }
 int getQueueSize(Queue q)
 {
-    assert(q!=NULL);
+   // assert(q!=NULL);
     int count = 0;
 
     Queue curr = q->next;
@@ -118,7 +117,7 @@ void printQueue(Queue q)
 struct timeval* getArrivalTime(Queue q,int process_fd)
 {
     struct timeval* required_timeval= NULL;
-    Queue curr=q;
+    Queue curr=q->next;
     while(curr!= NULL)
     {
         if(curr->process_fd == process_fd)
@@ -129,4 +128,29 @@ struct timeval* getArrivalTime(Queue q,int process_fd)
         curr=curr->next;
     }
     return required_timeval;
+}
+int getQueueHead(Queue q)
+{
+    if(q->next == NULL) {
+        return -1;
+    }
+    Queue curr = q->next;
+    while(curr->next!=NULL)
+    {
+        curr = curr->next;
+    }
+    int process_head_fd = curr->process_fd;
+    return process_head_fd;
+}
+//change it later
+int* getFdArrayQueue(Queue q)
+{
+    int q_size = getQueueSize(q);
+    int* fd_arr = (int*) malloc(sizeof(int) * q_size);
+    for(int i = 0; i < q_size; i++)
+    {
+        fd_arr[i] = q->next->process_fd;
+        q = q->next;
+    }
+    return fd_arr;
 }
