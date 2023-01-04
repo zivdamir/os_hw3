@@ -129,15 +129,15 @@ void requestServeDynamic(int fd, char *filename, char *cgiargs,int thread_id,int
     printStatistics(buf,fd,thread_id,http_count,static_count,dynamic_count,arrival_time,dispatch_time);
     //sprintf(buf,"%s\r\n",buf);
    Rio_writen(fd, buf, strlen(buf));
-
-   if (Fork() == 0) {
+    pid_t pid;
+   if ((pid=Fork()) == 0) {
       /* Child process */
       Setenv("QUERY_STRING", cgiargs, 1);
       /* When the CGI process writes to stdout, it will instead go to the socket */
       Dup2(fd, STDOUT_FILENO);
       Execve(filename, emptylist, environ);
    }
-   Wait(NULL);
+   WaitPid(pid,NULL,0);
 }
 
 
@@ -172,7 +172,7 @@ void requestServeStatic(int fd, char *filename, int filesize,int thread_id,int h
 
 // handle a request
 /** modified by us**/
-requestType requestHandle(int fd,struct timeval* arrival_time,struct timeval* dispatch_time, int http_total_count,int thread_id, int static_req_count, int dynamic_req_count)
+int requestHandle(int fd,struct timeval* arrival_time,struct timeval* dispatch_time, int http_total_count,int thread_id, int static_req_count, int dynamic_req_count)
 {
     //modify here and request error so it'll print what we need TODO
    int is_static;

@@ -33,7 +33,7 @@ ThreadWorker workers;
 pthread_cond_t queue_is_not_empty;
 pthread_cond_t queue_has_space;
 pthread_mutex_t waiting_queue_lock;
-pthread_mutex_t working_queue_lock;
+//pthread_mutex_t working_queue_lock;
 // Queues
 Queue working_queue;
 Queue waiting_queue;
@@ -69,11 +69,15 @@ void* threadRequestHandlerWrapper(void* arg)
     while(1)
     {
         pthread_mutex_lock(&waiting_queue_lock);
-
         while(getQueueSize(waiting_queue)==0)
         {
+
             pthread_cond_wait(&queue_is_not_empty,&waiting_queue_lock);
         }
+        pthread_mutex_unlock(&waiting_queue_lock);
+        pthread_cond_signal(&queue_is_not_empty);
+
+        pthread_mutex_lock(&waiting_queue_lock);
         int connection_fd=getQueueHead(waiting_queue);
         struct timeval dispatch_time;
         gettimeofday(&dispatch_time,NULL);
@@ -81,14 +85,13 @@ void* threadRequestHandlerWrapper(void* arg)
         struct timeval* arrival_time_p= getArrivalTime(waiting_queue,connection_fd);
 //assert(arrival_time_p!= NULL); //can't happen!, but still crashes here..TODO
         struct timeval arrival_time=*arrival_time_p;
-
-
-
-        pthread_mutex_unlock(&waiting_queue_lock);
-        //enqueue into working queue
-        pthread_mutex_lock(&working_queue_lock);
         enqueue(working_queue,connection_fd,arrival_time,dispatch_time);
-        pthread_mutex_unlock(&working_queue_lock);
+        pthread_mutex_unlock(&waiting_queue_lock);
+        pthread_cond_signal(&queue_is_not_empty);
+        //enqueue into working queue
+        //pthread_mutex_lock(&working_queue_lock);
+        //enqueue(working_queue,connection_fd,arrival_time,dispatch_time);
+        //pthread_mutex_unlock(&working_queue_lock);
         int i = 0;
         pthread_t self = pthread_self();
         for(; i < threads_num; i++)
@@ -112,11 +115,12 @@ void* threadRequestHandlerWrapper(void* arg)
                 workers[i].dynamic_requests_handled_count++;
             }
         }
-        pthread_mutex_lock(&working_queue_lock);
+        pthread_mutex_lock(&waiting_queue_lock);
         removeFromQueue(working_queue,connection_fd);
         //wake reader if needed
+
+        pthread_mutex_unlock(&waiting_queue_lock);
         pthread_cond_signal(&queue_has_space);
-        pthread_mutex_unlock(&working_queue_lock);
 
         Close(connection_fd);
 
@@ -135,11 +139,11 @@ int main(int argc, char *argv[])
 	/**added by us**/
     working_queue = initQueue();
     waiting_queue = initQueue();
-    pthread_mutex_init(&working_queue_lock,NULL);
+    //pthread_mutex_init(&working_queue_lock,NULL);
     pthread_mutex_init(&waiting_queue_lock,NULL);
     pthread_cond_init(&queue_has_space,NULL);
     pthread_cond_init(&queue_is_not_empty,NULL);
-    struct timeval arrival_time;
+    //struct timeval arrival_time;
     int queue_size;
     getargs(&port,&threads_num,&queue_size,&schedule_algorithm, argc, argv);
 	workers = (ThreadWorker)malloc(sizeof(struct thread_worker)*threads_num);
@@ -164,9 +168,10 @@ int main(int argc, char *argv[])
 		clientlen = sizeof(clientaddr);
 
 		connfd = Accept(listenfd, (SA *)&clientaddr, (socklen_t *) &clientlen);
+        struct timeval arrival_time;
         gettimeofday(&arrival_time, NULL);
 
-        //TODO (to finish):  3) add random sched support 4)for queue add way to find time of arrival by connfd and support with dispatch and arrival for all queue operations
+
 
         pthread_mutex_lock(&waiting_queue_lock);
         if(getQueueSize(waiting_queue)+getQueueSize(working_queue) < queue_size)
@@ -180,7 +185,8 @@ int main(int argc, char *argv[])
             {
                 while(getQueueSize(waiting_queue)+getQueueSize(working_queue) >= queue_size)
                 {
-                pthread_cond_wait(&queue_has_space,&waiting_queue_lock);
+                    pthread_cond_signal(&queue_is_not_empty);
+                    pthread_cond_wait(&queue_has_space,&waiting_queue_lock);
                 }
             }
             else if(strcmp(schedule_algorithm,"dt"))
@@ -204,12 +210,14 @@ int main(int argc, char *argv[])
                 enqueue(waiting_queue,connfd,arrival_time,arrival_time);
                 pthread_cond_signal(&queue_is_not_empty);
                 close(head_connfd);
+                pthread_mutex_unlock(&waiting_queue_lock);
+                continue;
             }
             else if(strcmp(schedule_algorithm,"random"))
             {
 
-                int drop_number = queue_size * 0.5;
-                if(queue_size % 10 != 0) drop_number++;
+                int drop_number = getQueueSize(waiting_queue) * 0.5;
+                if(getQueueSize(waiting_queue) % 10 != 0) drop_number++;
                 if (drop_number >= getQueueSize(waiting_queue))
                 {
                     int is_dropped = 0;
@@ -230,13 +238,13 @@ int main(int argc, char *argv[])
                     {
                         int rnd_value = rand() % getQueueSize(waiting_queue);
                         if(fd_arr[rnd_value] == -1) {i--; continue;}
-
                         removeFromQueue(waiting_queue, fd_arr[rnd_value]);
                         Close(fd_arr[rnd_value]);
                         fd_arr[rnd_value] = -1;
                     }
                     free(fd_arr);
             }
+
             }
 
 
@@ -244,7 +252,9 @@ int main(int argc, char *argv[])
         //requestHandle(connfd);
 
 	}
+
         pthread_mutex_unlock(&waiting_queue_lock);
+
 }
 
     }
