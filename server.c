@@ -145,6 +145,7 @@ int main(int argc, char *argv[])
 	workers = (ThreadWorker)malloc(sizeof(struct thread_worker)*threads_num);
 	if(workers == NULL)
 	{
+
 		perror("Malloc failed");
 		exit(0);
 	}
@@ -161,10 +162,10 @@ int main(int argc, char *argv[])
 
 	while (1) {
 		clientlen = sizeof(clientaddr);
-        printf("im listening ..\n");
+
 		connfd = Accept(listenfd, (SA *)&clientaddr, (socklen_t *) &clientlen);
         gettimeofday(&arrival_time, NULL);
-        printf("im done listening ..\n");
+
         //TODO (to finish):  3) add random sched support 4)for queue add way to find time of arrival by connfd and support with dispatch and arrival for all queue operations
 
         pthread_mutex_lock(&waiting_queue_lock);
