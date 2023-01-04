@@ -6,6 +6,7 @@
 // queue is like this : dummy->TAIL->...->...->HEAD->NULL
 Queue initQueue()
 {
+    //allocate a dummy
 	Queue q=(Queue)malloc(sizeof(*q));
 	if (q == NULL)
 	{
@@ -24,6 +25,7 @@ Queue initQueue()
 }
 void enqueue(Queue q,int process_fd,struct timeval arrival_time,struct timeval dispatch_time)  // push from tail
 {
+    //insert queue into the tail of the q object
 	//malloc new queue object
 	//assert(q != NULL);
 	Queue new_obj = (Queue)malloc(sizeof(*q));
@@ -61,6 +63,7 @@ int dequeue(Queue q){
 
 } // pop from head
 void removeFromQueue(Queue q, int process_fd){
+    //remove specific element with a process_fd
     Queue iterator = q;
     Queue to_delete = NULL;
     while(iterator->next!=NULL)
@@ -78,6 +81,7 @@ void removeFromQueue(Queue q, int process_fd){
 }//remove specific instance
 
 void destroyQueue(Queue q){
+    //destroy the queue, free all its content
    // assert(q!=NULL);
     Queue iterator = q;
     Queue to_delete = NULL;
@@ -91,6 +95,7 @@ void destroyQueue(Queue q){
 }
 int getQueueSize(Queue q)
 {
+    //get the count of elements in the queue
    // assert(q!=NULL);
     int count = 0;
 
@@ -120,6 +125,7 @@ struct timeval* getArrivalTime(Queue q,int process_fd)
     Queue curr=q->next;
     while(curr!= NULL)
     {
+        //hello
         if(curr->process_fd == process_fd)
         {
             required_timeval=&curr->arrival_time;

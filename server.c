@@ -35,8 +35,8 @@ pthread_cond_t queue_has_space;
 pthread_mutex_t waiting_queue_lock;
 //pthread_mutex_t working_queue_lock;
 // Queues
-Queue working_queue;
-Queue waiting_queue;
+Queue working_queue= NULL;
+Queue waiting_queue= NULL;
 
 // HW3: Parse the new arguments too
 void getargs(int *port,int* num_threads,int* queue_size,char** schedule_algorithm_arg, int argc, char *argv[])
@@ -121,8 +121,8 @@ void* threadRequestHandlerWrapper(void* arg)
 
         pthread_mutex_unlock(&waiting_queue_lock);
         pthread_cond_signal(&queue_has_space);
-
-        Close(connection_fd);
+        printf("close in 124 \n ");
+        //Close(connection_fd);
 
         }
         // requestHandle();
@@ -161,7 +161,7 @@ int main(int argc, char *argv[])
         //initalize a worker
 
         workers[i].total_http_requsts=workers[i].dynamic_requests_handled_count=workers[i].static_requests_handled_count=0;
-        pthread_create(&workers[i].thread, NULL, threadRequestHandlerWrapper, NULL);
+        pthread_create(&workers[i].thread, NULL, &threadRequestHandlerWrapper, NULL);
     }
 
 	while (1) {
@@ -191,7 +191,7 @@ int main(int argc, char *argv[])
             }
             else if(strcmp(schedule_algorithm,"dt"))
             {
-
+                printf("close in 194 \n");
                 close(connfd); //todo
                 //unlock the mutex so we can listen to a new request
                 pthread_mutex_unlock(&waiting_queue_lock);
@@ -203,13 +203,15 @@ int main(int argc, char *argv[])
                 int head_connfd = dequeue(waiting_queue);
                 if(head_connfd == -1) // meaning the list is empty and
                 {
-                    close(connfd);
+                    printf("close in 206 \n");
+                    Close(connfd);
                     pthread_mutex_unlock(&waiting_queue_lock);
                     continue;
                 }
                 enqueue(waiting_queue,connfd,arrival_time,arrival_time);
                 pthread_cond_signal(&queue_is_not_empty);
-                close(head_connfd);
+                printf("close in line 213 \n");
+                Close(head_connfd);
                 pthread_mutex_unlock(&waiting_queue_lock);
                 continue;
             }
@@ -226,6 +228,7 @@ int main(int argc, char *argv[])
 
                     if(!is_dropped)
                     {
+                        printf("close in random  230\n");
                         Close(connfd);
                         pthread_mutex_unlock(&waiting_queue_lock);
                         continue; //
@@ -239,6 +242,7 @@ int main(int argc, char *argv[])
                         int rnd_value = rand() % getQueueSize(waiting_queue);
                         if(fd_arr[rnd_value] == -1) {i--; continue;}
                         removeFromQueue(waiting_queue, fd_arr[rnd_value]);
+                        printf("close in 244\n");
                         Close(fd_arr[rnd_value]);
                         fd_arr[rnd_value] = -1;
                     }
