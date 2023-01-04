@@ -68,25 +68,36 @@ void* threadRequestHandlerWrapper(void* arg)
 
     while(1)
     {
+       // printf("wait for lock\n");
         pthread_mutex_lock(&waiting_queue_lock);
+       // printf("got lock\n");
         while(getQueueSize(waiting_queue)==0)
         {
-
+          //  printf("queue size is 0\n");
             pthread_cond_wait(&queue_is_not_empty,&waiting_queue_lock);
         }
-        pthread_mutex_unlock(&waiting_queue_lock);
-        pthread_cond_signal(&queue_is_not_empty);
 
+        //pthread_cond_signal(&queue_is_not_empty);
+        pthread_mutex_unlock(&waiting_queue_lock);
+
+      //  printf("waiting for lock in line 83\n");
         pthread_mutex_lock(&waiting_queue_lock);
         int connection_fd=getQueueHead(waiting_queue);
         struct timeval dispatch_time;
         gettimeofday(&dispatch_time,NULL);
         //do not wake reader here please!
+     //   printf("waiting for getarrival in line 90\n");
         struct timeval* arrival_time_p= getArrivalTime(waiting_queue,connection_fd);
+        removeFromQueue(waiting_queue,connection_fd);
 //assert(arrival_time_p!= NULL); //can't happen!, but still crashes here..TODO
         struct timeval arrival_time=*arrival_time_p;
+        if(arrival_time_p == NULL)
+        {
+     //       printf("waiting for getarrival WHICH GOT NULL in line 95\n");
+        }
         enqueue(working_queue,connection_fd,arrival_time,dispatch_time);
         pthread_mutex_unlock(&waiting_queue_lock);
+      //  printf("UNLOCK AND THEN SIGNAL NEXT WHICH GOT NULL in line 95\n");
         pthread_cond_signal(&queue_is_not_empty);
         //enqueue into working queue
         //pthread_mutex_lock(&working_queue_lock);
@@ -99,6 +110,7 @@ void* threadRequestHandlerWrapper(void* arg)
             if(workers[i].thread == self)
                 break;
         }
+        //printf("REQUEST HANDLE 112\n");
         requestType req_type = requestHandle(connection_fd,&arrival_time,&dispatch_time,
                                              workers[i].total_http_requsts,
                                              i,
@@ -109,11 +121,20 @@ void* threadRequestHandlerWrapper(void* arg)
         {
             if(req_type==STATIC)
             {
+              //  printf("closing static \n");
+
                 workers[i].static_requests_handled_count++;
             }
             else{
+               // printf("closing dyn\n ");
+
                 workers[i].dynamic_requests_handled_count++;
             }
+        }
+        else
+        {
+          //  printf("REMOVE IN LOIINE 136 HANDLE 112\n");
+            removeFromQueue(working_queue,connection_fd);
         }
         pthread_mutex_lock(&waiting_queue_lock);
         removeFromQueue(working_queue,connection_fd);
@@ -121,8 +142,8 @@ void* threadRequestHandlerWrapper(void* arg)
 
         pthread_mutex_unlock(&waiting_queue_lock);
         pthread_cond_signal(&queue_has_space);
-        printf("close in 124 \n ");
-        //Close(connection_fd);
+        //printf("close in 124 \n ");
+        Close(connection_fd);
 
         }
         // requestHandle();
@@ -191,7 +212,7 @@ int main(int argc, char *argv[])
             }
             else if(strcmp(schedule_algorithm,"dt"))
             {
-                printf("close in 194 \n");
+               // printf("close in 194 \n");
                 close(connfd); //todo
                 //unlock the mutex so we can listen to a new request
                 pthread_mutex_unlock(&waiting_queue_lock);
@@ -203,21 +224,22 @@ int main(int argc, char *argv[])
                 int head_connfd = dequeue(waiting_queue);
                 if(head_connfd == -1) // meaning the list is empty and
                 {
-                    printf("close in 206 \n");
+                  //  printf("close in 206 \n");
                     Close(connfd);
                     pthread_mutex_unlock(&waiting_queue_lock);
                     continue;
                 }
+                //
                 enqueue(waiting_queue,connfd,arrival_time,arrival_time);
                 pthread_cond_signal(&queue_is_not_empty);
-                printf("close in line 213 \n");
+              //  printf("close in line 213 \n");
                 Close(head_connfd);
                 pthread_mutex_unlock(&waiting_queue_lock);
                 continue;
             }
             else if(strcmp(schedule_algorithm,"random"))
             {
-
+//hello
                 int drop_number = getQueueSize(waiting_queue) * 0.5;
                 if(getQueueSize(waiting_queue) % 10 != 0) drop_number++;
                 if (drop_number >= getQueueSize(waiting_queue))
@@ -228,7 +250,7 @@ int main(int argc, char *argv[])
 
                     if(!is_dropped)
                     {
-                        printf("close in random  230\n");
+                    //    printf("close in random  230\n");
                         Close(connfd);
                         pthread_mutex_unlock(&waiting_queue_lock);
                         continue; //
@@ -242,7 +264,7 @@ int main(int argc, char *argv[])
                         int rnd_value = rand() % getQueueSize(waiting_queue);
                         if(fd_arr[rnd_value] == -1) {i--; continue;}
                         removeFromQueue(waiting_queue, fd_arr[rnd_value]);
-                        printf("close in 244\n");
+                    //    printf("close in 244\n");
                         Close(fd_arr[rnd_value]);
                         fd_arr[rnd_value] = -1;
                     }
@@ -250,10 +272,6 @@ int main(int argc, char *argv[])
             }
 
             }
-
-
-        //insert to thread function
-        //requestHandle(connfd);
 
 	}
 

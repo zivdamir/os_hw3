@@ -133,7 +133,7 @@ off_t Lseek(int fildes, off_t offset, int whence)
 void Close(int fd) 
 {
     int rc;
-    printf("%d is fd \n",fd);
+    //printf("%d is fd \n",fd);
     if ((rc = close(fd)) < 0)
         unix_error("Close error");
 }
