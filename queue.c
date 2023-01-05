@@ -35,12 +35,13 @@ void enqueue(Queue q,int process_fd,struct timeval arrival_time,struct timeval d
 		exit(1);
 	}
 	new_obj->process_fd = process_fd;
+    new_obj->arrival_time=arrival_time;
+    new_obj->dispatch_time=dispatch_time;
 	//insert into queue from tail
 	Queue curr_tail = q->next;//could be NULL, who cares..
 	q->next = new_obj;
 	new_obj->next = curr_tail;
-    new_obj->arrival_time=arrival_time;
-    new_obj->dispatch_time=dispatch_time;
+
 }
 int dequeue(Queue q){
 	//first get to head...
@@ -119,16 +120,18 @@ void printQueue(Queue q)
     }
     printf("end copy rot\n");
 }
-struct timeval* getArrivalTime(Queue q,int process_fd)
+struct timeval getArrivalTime(Queue q,int process_fd)
 {
-    struct timeval* required_timeval= NULL;
+    struct timeval required_timeval;
+    timerclear(&required_timeval);
+
     Queue curr=q->next;
     while(curr!= NULL)
     {
         //hello
         if(curr->process_fd == process_fd)
         {
-            required_timeval=&curr->arrival_time;
+            required_timeval = curr->arrival_time;
             break;
         }
         curr=curr->next;

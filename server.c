@@ -78,31 +78,31 @@ void* threadRequestHandlerWrapper(void* arg)
         }
 
         //pthread_cond_signal(&queue_is_not_empty);
-        pthread_mutex_unlock(&waiting_queue_lock);
+        //pthread_mutex_unlock(&waiting_queue_lock); todo
 
       //  printf("waiting for lock in line 83\n");
-        pthread_mutex_lock(&waiting_queue_lock);
+       // pthread_mutex_lock(&waiting_queue_lock); todo
         int connection_fd=getQueueHead(waiting_queue);
         struct timeval dispatch_time;
         gettimeofday(&dispatch_time,NULL);
         //do not wake reader here please!
      //   printf("waiting for getarrival in line 90\n");
-        struct timeval* arrival_time_p= getArrivalTime(waiting_queue,connection_fd);
+        struct timeval arrival_time= getArrivalTime(waiting_queue,connection_fd);
         removeFromQueue(waiting_queue,connection_fd);
-//assert(arrival_time_p!= NULL); //can't happen!, but still crashes here..TODO
-        struct timeval arrival_time=*arrival_time_p;
-        if(arrival_time_p == NULL)
-        {
+        //assert(arrival_time_p!= NULL); //can't happen!, but still crashes here..TODO
+        //struct timeval arrival_time=*arrival_time_p;
+        //if(arrival_time_p == NULL)
+        //{
+            /*
+             Header: Stat-Req-Arrival:: 140050696243408.730291
+Header: Stat-Req-Dispatch:: 1672914472.730327 */
+       // printf("arrival time is null\n");
      //       printf("waiting for getarrival WHICH GOT NULL in line 95\n");
-        }
+        //}
         enqueue(working_queue,connection_fd,arrival_time,dispatch_time);
-        pthread_mutex_unlock(&waiting_queue_lock);
-      //  printf("UNLOCK AND THEN SIGNAL NEXT WHICH GOT NULL in line 95\n");
         pthread_cond_signal(&queue_is_not_empty);
-        //enqueue into working queue
-        //pthread_mutex_lock(&working_queue_lock);
-        //enqueue(working_queue,connection_fd,arrival_time,dispatch_time);
-        //pthread_mutex_unlock(&working_queue_lock);
+        pthread_mutex_unlock(&waiting_queue_lock);
+
         int i = 0;
         pthread_t self = pthread_self();
         for(; i < threads_num; i++)
@@ -111,7 +111,7 @@ void* threadRequestHandlerWrapper(void* arg)
                 break;
         }
         //printf("REQUEST HANDLE 112\n");
-        requestType req_type = requestHandle(connection_fd,&arrival_time,&dispatch_time,
+        requestType req_type = requestHandle(connection_fd,arrival_time,dispatch_time,
                                              workers[i].total_http_requsts,
                                              i,
                                              workers[i].static_requests_handled_count,

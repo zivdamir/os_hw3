@@ -5,9 +5,9 @@
 #include "segel.h"
 #include "request.h"
 
-void printStatistics(char* buf,int fd_num, int thread_id,int http_count,int static_count,int dynamic_count,struct timeval* arrival_time, struct timeval* dispatch_time);
+void printStatistics(char* buf,int fd_num, int thread_id,int http_count,int static_count,int dynamic_count,struct timeval arrival_time, struct timeval dispatch_time);
 // requestError(      fd,    filename,        "404",    "Not found", "OS-HW3 Server could not find this file");
-void requestError(int fd, char *cause, char *errnum, char *shortmsg, char *longmsg,int thread_id,int http_count,int static_count,int dynamic_count,struct timeval* arrival_time, struct timeval* dispatch_time)
+void requestError(int fd, char *cause, char *errnum, char *shortmsg, char *longmsg,int thread_id,int http_count,int static_count,int dynamic_count,struct timeval arrival_time, struct timeval dispatch_time)
 {
    char buf[MAXLINE], body[MAXBUF];
 
@@ -38,11 +38,11 @@ void requestError(int fd, char *cause, char *errnum, char *shortmsg, char *longm
    printf("%s", body);
 
 }
-void printStatistics(char* buf,int fd_num, int thread_id,int http_count,int static_count,int dynamic_count,struct timeval* arrival_time, struct timeval* dispatch_time)
+void printStatistics(char* buf,int fd_num, int thread_id,int http_count,int static_count,int dynamic_count,struct timeval arrival_time, struct timeval dispatch_time)
 {
     struct timeval dispatch_interval;
-    timersub(dispatch_time,arrival_time,&dispatch_interval);
-    sprintf(buf,"%sStat-Req-Arrival:: %ld.%06ld\r\n",buf,arrival_time->tv_sec,arrival_time->tv_usec);
+    timersub(&dispatch_time,&arrival_time,&dispatch_interval);
+    sprintf(buf,"%sStat-Req-Arrival:: %ld.%06ld\r\n",buf,arrival_time.tv_sec,arrival_time.tv_usec);
 
     sprintf(buf,"%sStat-Req-Dispatch:: %ld.%06ld\r\n",buf,dispatch_interval.tv_sec,dispatch_interval.tv_usec);
 
@@ -118,7 +118,7 @@ void requestGetFiletype(char *filename, char *filetype)
       strcpy(filetype, "text/plain");
 }
 
-void requestServeDynamic(int fd, char *filename, char *cgiargs,int thread_id,int http_count,int static_count,int dynamic_count,struct timeval* arrival_time, struct timeval* dispatch_time)
+void requestServeDynamic(int fd, char *filename, char *cgiargs,int thread_id,int http_count,int static_count,int dynamic_count,struct timeval arrival_time, struct timeval dispatch_time)
 {
    char buf[MAXLINE], *emptylist[] = {NULL};
 
@@ -128,20 +128,30 @@ void requestServeDynamic(int fd, char *filename, char *cgiargs,int thread_id,int
    sprintf(buf, "%sServer: OS-HW3 Web Server\r\n", buf);
     printStatistics(buf,fd,thread_id,http_count,static_count,dynamic_count,arrival_time,dispatch_time);
     //sprintf(buf,"%s\r\n",buf);
-   Rio_writen(fd, buf, strlen(buf));
-    pid_t pid;
-   if ((pid=Fork()) == 0) {
+    Rio_writen(fd, buf, strlen(buf));
+    pid_t pid=Fork();
+    //TODO PROBLEM HERE
+   if (pid == 0) {
       /* Child process */
+
       Setenv("QUERY_STRING", cgiargs, 1);
       /* When the CGI process writes to stdout, it will instead go to the socket */
       Dup2(fd, STDOUT_FILENO);
       Execve(filename, emptylist, environ);
    }
-   WaitPid(pid,NULL,0);
+   else
+   {
+       int done;
+       do {
+           done= WaitPid(pid,NULL,WNOHANG|WUNTRACED);
+       }while(done!=0);
+
+   }
+    //Wait(NULL);
 }
 
 
-void requestServeStatic(int fd, char *filename, int filesize,int thread_id,int http_count,int static_count,int dynamic_count,struct timeval* arrival_time, struct timeval* dispatch_time)
+void requestServeStatic(int fd, char *filename, int filesize,int thread_id,int http_count,int static_count,int dynamic_count,struct timeval arrival_time, struct timeval dispatch_time)
 {
    int srcfd;
    char *srcp, filetype[MAXLINE], buf[MAXBUF];
@@ -172,7 +182,7 @@ void requestServeStatic(int fd, char *filename, int filesize,int thread_id,int h
 
 // handle a request
 /** modified by us**/
-int requestHandle(int fd,struct timeval* arrival_time,struct timeval* dispatch_time, int http_total_count,int thread_id, int static_req_count, int dynamic_req_count)
+int requestHandle(int fd,struct timeval arrival_time,struct timeval dispatch_time, int http_total_count,int thread_id, int static_req_count, int dynamic_req_count)
 {
     //modify here and request error so it'll print what we need TODO
    int is_static;
