@@ -23,11 +23,12 @@ Queue initQueue()
 	}
 	return q;
 }
-void enqueue(Queue q,int process_fd,struct timeval arrival_time,struct timeval dispatch_time)  // push from tail
+void enqueue(Queue q,int process_fd,struct timeval arrival_time,struct timeval dispatch_time,int is_waiting_queue)  // push from tail
 {
     //insert queue into the tail of the q object
 	//malloc new queue object
 	//assert(q != NULL);
+
 	Queue new_obj = (Queue)malloc(sizeof(*q));
 	if(new_obj == NULL)
 	{
@@ -36,7 +37,15 @@ void enqueue(Queue q,int process_fd,struct timeval arrival_time,struct timeval d
 	}
 	new_obj->process_fd = process_fd;
     new_obj->arrival_time=arrival_time;
-    new_obj->dispatch_time=dispatch_time;
+    if(is_waiting_queue==1)
+    {
+        struct timeval time={0,0};
+        //yes, its waiting queue.
+        new_obj->dispatch_time = time;
+    }
+    else {
+        new_obj->dispatch_time = dispatch_time;
+    }
 	//insert into queue from tail
 	Queue curr_tail = q->next;//could be NULL, who cares..
 	q->next = new_obj;

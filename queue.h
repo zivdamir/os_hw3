@@ -15,7 +15,7 @@ typedef struct queue {
 //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
 Queue initQueue();
 int getQueueSize(Queue q);
-void enqueue(Queue q,int process_fd,struct timeval arrival_time,struct timeval dispatch_time);  // push from tail
+void enqueue(Queue q,int process_fd,struct timeval arrival_time,struct timeval dispatch_time ,int is_waiting_queue);  // push from tail
 int dequeue(Queue q); // pop from head
 void removeFromQueue(Queue q, int process_fd);//remove specific instance
 void destroyQueue(Queue q);

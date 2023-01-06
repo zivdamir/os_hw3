@@ -13,26 +13,34 @@
 // queue waiting requests , queue working reqes
 
 // A thread which handles requests.
+
 typedef struct thread_worker
 {
-
-	int connfd; // The current client's fd
+    int id_in_worker_array;
     int total_http_requsts;//counting also non-wokring requests trying to handle
     int static_requests_handled_count;//only working requests
     int dynamic_requests_handled_count;//only working requests..
-	pthread_t thread; // The working thread struct.
+
 }*ThreadWorker;
 
+/*typedef struct thread_worker
+{
+   // int id_in_worker_array;
+    int total_http_requsts;//counting also non-wokring requests trying to handle
+    int static_requests_handled_count;//only working requests
+    int dynamic_requests_handled_count;//only working requests..
+    pthread_t thread; // The working thread struct.
+}*ThreadWorker;*/
 // threads_num - number of working treads.
-int threads_num;
+int threads_num=0;
 char* schedule_algorithm;
 // An Array of ThreadWorkers
 ThreadWorker workers;
 
 // Synchronization mechanism objects
-pthread_cond_t queue_is_not_empty;
-pthread_cond_t queue_has_space;
-pthread_mutex_t waiting_queue_lock;
+pthread_cond_t workers_cond;
+pthread_cond_t master_cond;
+pthread_mutex_t queue_lock;
 //pthread_mutex_t working_queue_lock;
 // Queues
 Queue working_queue= NULL;
@@ -41,7 +49,7 @@ Queue waiting_queue= NULL;
 // HW3: Parse the new arguments too
 void getargs(int *port,int* num_threads,int* queue_size,char** schedule_algorithm_arg, int argc, char *argv[])
 {
-	if (argc < 5) {
+	if (argc < 4) {
 		fprintf(stderr, "Usage: %s <port> <threads> <queue_size> <schedalg> \n", argv[0]);
 		exit(1);
 	}
@@ -63,197 +71,154 @@ void getargs(int *port,int* num_threads,int* queue_size,char** schedule_algorith
 
 void* threadRequestHandlerWrapper(void* arg)
 {
-
-
-
+    struct thread_worker current_thread_stats=*((struct thread_worker*)arg);
     while(1)
     {
        // printf("wait for lock\n");
-        pthread_mutex_lock(&waiting_queue_lock);
+        pthread_mutex_lock(&queue_lock);
        // printf("got lock\n");
         while(getQueueSize(waiting_queue)==0)
         {
-          //  printf("queue size is 0\n");
-            pthread_cond_wait(&queue_is_not_empty,&waiting_queue_lock);
+
+            //printf("Thread: queue size is 0 \n");
+            pthread_cond_wait(&workers_cond, &queue_lock);
         }
 
-        //pthread_cond_signal(&queue_is_not_empty);
-        //pthread_mutex_unlock(&waiting_queue_lock); todo
-
-      //  printf("waiting for lock in line 83\n");
-       // pthread_mutex_lock(&waiting_queue_lock); todo
         int connection_fd=getQueueHead(waiting_queue);
         struct timeval dispatch_time;
         gettimeofday(&dispatch_time,NULL);
-        //do not wake reader here please!
-     //   printf("waiting for getarrival in line 90\n");
+
+        pthread_mutex_unlock(&queue_lock);
         struct timeval arrival_time= getArrivalTime(waiting_queue,connection_fd);
-        removeFromQueue(waiting_queue,connection_fd);
-        //assert(arrival_time_p!= NULL); //can't happen!, but still crashes here..TODO
-        //struct timeval arrival_time=*arrival_time_p;
-        //if(arrival_time_p == NULL)
-        //{
-            /*
-             Header: Stat-Req-Arrival:: 140050696243408.730291
-Header: Stat-Req-Dispatch:: 1672914472.730327 */
-       // printf("arrival time is null\n");
-     //       printf("waiting for getarrival WHICH GOT NULL in line 95\n");
-        //}
-        enqueue(working_queue,connection_fd,arrival_time,dispatch_time);
-        pthread_cond_signal(&queue_is_not_empty);
-        pthread_mutex_unlock(&waiting_queue_lock);
-
-        int i = 0;
+        dequeue(waiting_queue);
+        enqueue(working_queue,connection_fd,arrival_time,dispatch_time,0);
+        //printf("Thread: queue size is %d \n", getQueueSize(working_queue));
+        //pthread_cond_signal(&master_cond);
+        //pthread_cond_signal(&workers_cond);
+        /*int i = 0;
         pthread_t self = pthread_self();
-        for(; i < threads_num; i++)
+        for(  int j = 0; j < threads_num; j++)
         {
-            if(workers[i].thread == self)
+            if(workers[i].thread == self) {
+                i = j;
                 break;
-        }
+            }
+        }*/
+        pthread_mutex_unlock(&queue_lock);
+  //problem here, we're giving wrong thread probably. TDOO
+
         //printf("REQUEST HANDLE 112\n");
-        requestType req_type = requestHandle(connection_fd,arrival_time,dispatch_time,
-                                             workers[i].total_http_requsts,
-                                             i,
-                                             workers[i].static_requests_handled_count,
-                                             workers[i].dynamic_requests_handled_count);// NEED TO CHAGNE requesthandle code  SO IT'LL check  DYNAMIC STATIC, error, also prints AND SUCH
-        workers[i].total_http_requsts++;
-        if(req_type!= ERROR)
-        {
-            if(req_type==STATIC)
-            {
-              //  printf("closing static \n");
 
-                workers[i].static_requests_handled_count++;
-            }
-            else{
-               // printf("closing dyn\n ");
 
-                workers[i].dynamic_requests_handled_count++;
-            }
-        }
-        else
-        {
-          //  printf("REMOVE IN LOIINE 136 HANDLE 112\n");
-            removeFromQueue(working_queue,connection_fd);
-        }
-        pthread_mutex_lock(&waiting_queue_lock);
+         requestHandle(connection_fd,arrival_time,dispatch_time,
+                                     &current_thread_stats.total_http_requsts,
+                                      current_thread_stats.id_in_worker_array,
+                                     &current_thread_stats.static_requests_handled_count,
+                                     &current_thread_stats.dynamic_requests_handled_count);// NEED TO CHAGNE requesthandle code  SO IT'LL check  DYNAMIC STATIC, error, also prints AND SUCH
+
+        //workers[i].total_http_requsts+=1
+        pthread_mutex_lock(&queue_lock);
         removeFromQueue(working_queue,connection_fd);
-        //wake reader if needed
-
-        pthread_mutex_unlock(&waiting_queue_lock);
-        pthread_cond_signal(&queue_has_space);
-        //printf("close in 124 \n ");
+        pthread_cond_signal(&master_cond);
         Close(connection_fd);
+        pthread_mutex_unlock(&queue_lock);
 
         }
+    return NULL;
         // requestHandle();
         //we need to modify  handlerequest and send it more info so we can know whether the request is static or dynamic...
 }
 
 
+//could there be a situation , where I try to
 int main(int argc, char *argv[])
 {
     /**received code**/
-	int listenfd, connfd, port, clientlen;
-	struct sockaddr_in clientaddr;
-
-	/**added by us**/
+    int listenfd, connfd, port, clientlen;
+    struct sockaddr_in clientaddr;
+    /**added by us**/
     working_queue = initQueue();
     waiting_queue = initQueue();
-    //pthread_mutex_init(&working_queue_lock,NULL);
-    pthread_mutex_init(&waiting_queue_lock,NULL);
-    pthread_cond_init(&queue_has_space,NULL);
-    pthread_cond_init(&queue_is_not_empty,NULL);
-    //struct timeval arrival_time;
-    int queue_size;
-    getargs(&port,&threads_num,&queue_size,&schedule_algorithm, argc, argv);
-	workers = (ThreadWorker)malloc(sizeof(struct thread_worker)*threads_num);
-	if(workers == NULL)
-	{
 
-		perror("Malloc failed");
-		exit(0);
-	}
+
+    //pthread_mutex_init(&working_queue_lock,NULL);
+    pthread_mutex_init(&queue_lock, NULL);
+    pthread_cond_init(&master_cond, NULL);
+    pthread_cond_init(&workers_cond, NULL);
+    //struct timeval arrival_time;
+    int queue_size=0;
+    getargs(&port,&threads_num,&queue_size,&schedule_algorithm, argc, argv);
+   // printf("port %d, threads num %d, queue_size %d, scheduele alg %s \n",port , threads_num, queue_size, schedule_algorithm);
+
+
+    workers = (ThreadWorker)malloc(sizeof(struct thread_worker)*threads_num);
+    if(workers == NULL)
+    {
+        perror("Malloc failed");
+        exit(0);
+    }
 
     listenfd = Open_listenfd(port);
 
     for(int i = 0; i < threads_num; i++)
     {
         //initalize a worker
-
-        workers[i].total_http_requsts=workers[i].dynamic_requests_handled_count=workers[i].static_requests_handled_count=0;
-        pthread_create(&workers[i].thread, NULL, &threadRequestHandlerWrapper, NULL);
+        workers[i].id_in_worker_array=i;
+        workers[i].total_http_requsts=0;
+                workers[i].dynamic_requests_handled_count=0;
+                        workers[i].static_requests_handled_count=0;
+                        pthread_t thread;
+        pthread_create(&thread, NULL, &threadRequestHandlerWrapper, &workers[i]);
     }
 
-	while (1) {
-		clientlen = sizeof(clientaddr);
+    while (1) {
+        clientlen = sizeof(clientaddr);
 
-		connfd = Accept(listenfd, (SA *)&clientaddr, (socklen_t *) &clientlen);
+        connfd = Accept(listenfd, (SA *)&clientaddr, (socklen_t *) &clientlen);
         struct timeval arrival_time;
         gettimeofday(&arrival_time, NULL);
-
-
-
-        pthread_mutex_lock(&waiting_queue_lock);
-        if(getQueueSize(waiting_queue)+getQueueSize(working_queue) < queue_size)
+        pthread_mutex_lock(&queue_lock);
+        printf("MASTER THREAD ***\n");
+        printQueue(waiting_queue);
+        printQueue(working_queue);
+        if(getQueueSize(waiting_queue)+getQueueSize(working_queue) >= queue_size)
         {
-            enqueue(waiting_queue, connfd,arrival_time, arrival_time);
-            pthread_cond_signal(&queue_is_not_empty);
-        }
-        else
-        {
-            if(strcmp(schedule_algorithm,"block"))
+
+            printf("%s\n",schedule_algorithm);
+            if(strcmp(schedule_algorithm,"block")==0)
             {
                 while(getQueueSize(waiting_queue)+getQueueSize(working_queue) >= queue_size)
                 {
-                    pthread_cond_signal(&queue_is_not_empty);
-                    pthread_cond_wait(&queue_has_space,&waiting_queue_lock);
+
+                    printf("blocked \n");
+                    pthread_cond_wait(&master_cond, &queue_lock);
                 }
             }
-            else if(strcmp(schedule_algorithm,"dt"))
+            else if(strcmp(schedule_algorithm,"dt")==0)
             {
-               // printf("close in 194 \n");
+                // printf("close in 194 \n");
                 close(connfd); //todo
-                //unlock the mutex so we can listen to a new request
-                pthread_mutex_unlock(&waiting_queue_lock);
+                pthread_mutex_unlock(&queue_lock);
                 //continue without unlocking again(skip the unlock after the all elses
                 continue;
             }
-            else if(strcmp(schedule_algorithm,"dh"))
-            {
-                int head_connfd = dequeue(waiting_queue);
-                if(head_connfd == -1) // meaning the list is empty and
-                {
-                  //  printf("close in 206 \n");
-                    Close(connfd);
-                    pthread_mutex_unlock(&waiting_queue_lock);
-                    continue;
-                }
-                //
-                enqueue(waiting_queue,connfd,arrival_time,arrival_time);
-                pthread_cond_signal(&queue_is_not_empty);
-              //  printf("close in line 213 \n");
-                Close(head_connfd);
-                pthread_mutex_unlock(&waiting_queue_lock);
-                continue;
-            }
-            else if(strcmp(schedule_algorithm,"random"))
+            else if(strcmp(schedule_algorithm,"random")==0)
             {
 //hello
                 int drop_number = getQueueSize(waiting_queue) * 0.5;
-                if(getQueueSize(waiting_queue) % 10 != 0) drop_number++;
+               // if(getQueueSize(waiting_queue) % 10 != 0) drop_number++;
                 if (drop_number >= getQueueSize(waiting_queue))
                 {
                     int is_dropped = 0;
-                    while(dequeue(waiting_queue) != -1)
-                    { is_dropped = 1; }
+                    while(dequeue(waiting_queue) != -1) {
+                        is_dropped = 1;}
 
-                    if(!is_dropped)
-                    {
-                    //    printf("close in random  230\n");
-                        Close(connfd);
-                        pthread_mutex_unlock(&waiting_queue_lock);
-                        continue; //
+                        if (!is_dropped) {
+                            //    printf("close in random  230\n");
+                            Close(connfd);
+                            pthread_mutex_unlock(&queue_lock);
+                            continue; //
+
                     }
                 }
                 else
@@ -262,24 +227,37 @@ int main(int argc, char *argv[])
                     for(int i = 0; i < drop_number; i++)
                     {
                         int rnd_value = rand() % getQueueSize(waiting_queue);
-                        if(fd_arr[rnd_value] == -1) {i--; continue;}
+                        if(fd_arr[rnd_value] == -1) {
+                            i--;
+                            continue;}
                         removeFromQueue(waiting_queue, fd_arr[rnd_value]);
-                    //    printf("close in 244\n");
+                        //    printf("close in 244\n");
                         Close(fd_arr[rnd_value]);
                         fd_arr[rnd_value] = -1;
                     }
                     free(fd_arr);
+                }
             }
+            else if(strcmp(schedule_algorithm,"dh")==0)
+            {
 
+                int head_connfd = dequeue(waiting_queue);
+                if(head_connfd == -1) // meaning the list is empty and
+                {
+                    Close(connfd);
+                    pthread_mutex_unlock(&queue_lock);
+                    continue;
+                }
+                Close(head_connfd);
             }
+        }
+        enqueue(waiting_queue,connfd,arrival_time,arrival_time,1);
+        pthread_cond_signal(&workers_cond);
+        pthread_mutex_unlock(&queue_lock);
 
-	}
-
-        pthread_mutex_unlock(&waiting_queue_lock);
-
-}
 
     }
+}
     
 
 

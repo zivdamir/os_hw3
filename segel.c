@@ -133,7 +133,7 @@ off_t Lseek(int fildes, off_t offset, int whence)
 void Close(int fd) 
 {
     int rc;
-    //printf("%d is fd \n",fd);
+
     if ((rc = close(fd)) < 0)
         unix_error("Close error");
 }
@@ -441,7 +441,6 @@ void Rio_writen(int fd, void *usrbuf, size_t n)
 
 void Rio_readinitb(rio_t *rp, int fd)
 {
-
     rio_readinitb(rp, fd);
 } 
 
@@ -454,14 +453,12 @@ ssize_t Rio_readnb(rio_t *rp, void *usrbuf, size_t n)
     return rc;
 }
 
-ssize_t Rio_readlineb(rio_t *rp, void *usrbuf, size_t maxlen)
+ssize_t Rio_readlineb(rio_t *rp, void *usrbuf, size_t maxlen) 
 {
     ssize_t rc;
-    //printf("heyyy rioreadlineb is working?? \n");
-    if ((rc = rio_readlineb(rp, usrbuf, maxlen)) < 0) {
 
+    if ((rc = rio_readlineb(rp, usrbuf, maxlen)) < 0)
         unix_error("Rio_readlineb error");
-    }
     return rc;
 } 
 
