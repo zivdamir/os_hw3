@@ -88,22 +88,10 @@ void* threadRequestHandlerWrapper(void* arg)
         struct timeval dispatch_time;
         gettimeofday(&dispatch_time,NULL);
 
-        pthread_mutex_unlock(&queue_lock);
+        //pthread_mutex_unlock(&queue_lock);
         struct timeval arrival_time= getArrivalTime(waiting_queue,connection_fd);
         dequeue(waiting_queue);
         enqueue(working_queue,connection_fd,arrival_time,dispatch_time,0);
-        //printf("Thread: queue size is %d \n", getQueueSize(working_queue));
-        //pthread_cond_signal(&master_cond);
-        //pthread_cond_signal(&workers_cond);
-        /*int i = 0;
-        pthread_t self = pthread_self();
-        for(  int j = 0; j < threads_num; j++)
-        {
-            if(workers[i].thread == self) {
-                i = j;
-                break;
-            }
-        }*/
         pthread_mutex_unlock(&queue_lock);
   //problem here, we're giving wrong thread probably. TDOO
 
@@ -122,15 +110,11 @@ void* threadRequestHandlerWrapper(void* arg)
         pthread_cond_signal(&master_cond);
         Close(connection_fd);
         pthread_mutex_unlock(&queue_lock);
-
         }
-    return NULL;
-        // requestHandle();
-        //we need to modify  handlerequest and send it more info so we can know whether the request is static or dynamic...
 }
 
 
-//could there be a situation , where I try to
+
 int main(int argc, char *argv[])
 {
     /**received code**/
@@ -178,19 +162,17 @@ int main(int argc, char *argv[])
         struct timeval arrival_time;
         gettimeofday(&arrival_time, NULL);
         pthread_mutex_lock(&queue_lock);
-        printf("MASTER THREAD ***\n");
-        printQueue(waiting_queue);
-        printQueue(working_queue);
+
         if(getQueueSize(waiting_queue)+getQueueSize(working_queue) >= queue_size)
         {
 
-            printf("%s\n",schedule_algorithm);
+          //  printf("%s\n",schedule_algorithm);
             if(strcmp(schedule_algorithm,"block")==0)
             {
                 while(getQueueSize(waiting_queue)+getQueueSize(working_queue) >= queue_size)
                 {
 
-                    printf("blocked \n");
+
                     pthread_cond_wait(&master_cond, &queue_lock);
                 }
             }
