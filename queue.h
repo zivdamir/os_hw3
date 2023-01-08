@@ -23,5 +23,6 @@ void printQueue(Queue q);
 int getQueueHead(Queue q);
 struct timeval getArrivalTime(Queue q,int process_fd);
 int* getFdArrayQueue(Queue q);
+int getKthElementFD(Queue q, int k); // k is between 1 to queue_size
 //TODO ADD MORE
 #endif //WEBSERVER_FILES_QUEUE_H
