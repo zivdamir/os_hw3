@@ -164,11 +164,26 @@ int getQueueHead(Queue q)
 int* getFdArrayQueue(Queue q)
 {
     int q_size = getQueueSize(q);
+    if(q_size==0) return NULL;
     int* fd_arr = (int*) malloc(sizeof(int) * q_size);
+    Queue tmp=q;
     for(int i = 0; i < q_size; i++)
     {
-        fd_arr[i] = q->next->process_fd;
-        q = q->next;
+        fd_arr[i] = tmp->next->process_fd;
+        tmp = tmp->next;
     }
     return fd_arr;
 }
+int getKthElementFD(Queue q, int k){
+    assert(k!=0);
+    assert(k<= getQueueSize(q));
+    int count =k;
+    Queue temp = q;
+    while(count!=0)
+    {
+        temp = temp->next;
+        count-=1;
+    }
+    return temp->process_fd;
+
+} // k is between 1 to queue_size*/

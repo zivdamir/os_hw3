@@ -49,20 +49,20 @@ Queue waiting_queue= NULL;
 // HW3: Parse the new arguments too
 void getargs(int *port,int* num_threads,int* queue_size,char** schedule_algorithm_arg, int argc, char *argv[])
 {
-	if (argc < 4) {
-		fprintf(stderr, "Usage: %s <port> <threads> <queue_size> <schedalg> \n", argv[0]);
-		exit(1);
-	}
-	*port = atoi(argv[1]);
-	*num_threads=atoi(argv[2]);
-	*queue_size=atoi(argv[3]);
+    if (argc < 4) {
+        fprintf(stderr, "Usage: %s <port> <threads> <queue_size> <schedalg> \n", argv[0]);
+        exit(1);
+    }
+    *port = atoi(argv[1]);
+    *num_threads=atoi(argv[2]);
+    *queue_size=atoi(argv[3]);
     *schedule_algorithm_arg=(char*)malloc((strlen(argv[4])+1)*sizeof(char));
     strcpy(*schedule_algorithm_arg,argv[4]);
-	if(*num_threads < 0)
-	{
+    if(*num_threads < 0)
+    {
         free(*schedule_algorithm_arg);
-		unix_error("error");
-	}
+        unix_error("error");
+    }
     if(*queue_size<=0)
     {
         unix_error("error");
@@ -74,9 +74,9 @@ void* threadRequestHandlerWrapper(void* arg)
     struct thread_worker current_thread_stats=*((struct thread_worker*)arg);
     while(1)
     {
-       // printf("wait for lock\n");
+        // printf("wait for lock\n");
         pthread_mutex_lock(&queue_lock);
-       // printf("got lock\n");
+        // printf("got lock\n");
         while(getQueueSize(waiting_queue)==0)
         {
 
@@ -93,16 +93,16 @@ void* threadRequestHandlerWrapper(void* arg)
         dequeue(waiting_queue);
         enqueue(working_queue,connection_fd,arrival_time,dispatch_time,0);
         pthread_mutex_unlock(&queue_lock);
-  //problem here, we're giving wrong thread probably. TDOO
+        //problem here, we're giving wrong thread probably. TDOO
 
         //printf("REQUEST HANDLE 112\n");
 
 
-         requestHandle(connection_fd,arrival_time,dispatch_time,
-                                     &current_thread_stats.total_http_requsts,
-                                      current_thread_stats.id_in_worker_array,
-                                     &current_thread_stats.static_requests_handled_count,
-                                     &current_thread_stats.dynamic_requests_handled_count);// NEED TO CHAGNE requesthandle code  SO IT'LL check  DYNAMIC STATIC, error, also prints AND SUCH
+        requestHandle(connection_fd,arrival_time,dispatch_time,
+                      &current_thread_stats.total_http_requsts,
+                      current_thread_stats.id_in_worker_array,
+                      &current_thread_stats.static_requests_handled_count,
+                      &current_thread_stats.dynamic_requests_handled_count);// NEED TO CHAGNE requesthandle code  SO IT'LL check  DYNAMIC STATIC, error, also prints AND SUCH
 
         //workers[i].total_http_requsts+=1
         pthread_mutex_lock(&queue_lock);
@@ -110,7 +110,7 @@ void* threadRequestHandlerWrapper(void* arg)
         pthread_cond_signal(&master_cond);
         Close(connection_fd);
         pthread_mutex_unlock(&queue_lock);
-        }
+    }
 }
 
 
@@ -132,7 +132,7 @@ int main(int argc, char *argv[])
     //struct timeval arrival_time;
     int queue_size=0;
     getargs(&port,&threads_num,&queue_size,&schedule_algorithm, argc, argv);
-   // printf("port %d, threads num %d, queue_size %d, scheduele alg %s \n",port , threads_num, queue_size, schedule_algorithm);
+    // printf("port %d, threads num %d, queue_size %d, scheduele alg %s \n",port , threads_num, queue_size, schedule_algorithm);
 
 
     workers = (ThreadWorker)malloc(sizeof(struct thread_worker)*threads_num);
@@ -149,9 +149,9 @@ int main(int argc, char *argv[])
         //initalize a worker
         workers[i].id_in_worker_array=i;
         workers[i].total_http_requsts=0;
-                workers[i].dynamic_requests_handled_count=0;
-                        workers[i].static_requests_handled_count=0;
-                        pthread_t thread;
+        workers[i].dynamic_requests_handled_count=0;
+        workers[i].static_requests_handled_count=0;
+        pthread_t thread;
         pthread_create(&thread, NULL, &threadRequestHandlerWrapper, &workers[i]);
     }
 
@@ -166,7 +166,7 @@ int main(int argc, char *argv[])
         if(getQueueSize(waiting_queue)+getQueueSize(working_queue) >= queue_size)
         {
 
-          //  printf("%s\n",schedule_algorithm);
+            //  printf("%s\n",schedule_algorithm);
             if(strcmp(schedule_algorithm,"block")==0)
             {
                 while(getQueueSize(waiting_queue)+getQueueSize(working_queue) >= queue_size)
@@ -186,39 +186,72 @@ int main(int argc, char *argv[])
             }
             else if(strcmp(schedule_algorithm,"random")==0)
             {
-//hello
-                int drop_number = getQueueSize(waiting_queue) * 0.5;
-               // if(getQueueSize(waiting_queue) % 10 != 0) drop_number++;
-                if (drop_number >= getQueueSize(waiting_queue))
+
+                int drop_number = getQueueSize(waiting_queue)/2 + getQueueSize(waiting_queue)%2;
+                if(getQueueSize(waiting_queue)==0)
+                {
+                    Close(connfd);
+                    pthread_mutex_unlock(&queue_lock);
+                    continue;
+                }
+                if(getQueueSize(waiting_queue)==1)
+                {
+                    Close(dequeue(waiting_queue));
+                    enqueue(waiting_queue,connfd,arrival_time,arrival_time,1);
+                    pthread_mutex_unlock(&queue_lock);
+                    continue;
+                }
+                else
+                {
+                    while(drop_number>0) {
+                        int random_chosen= rand()% (getQueueSize(waiting_queue));
+                        random_chosen+=1;
+
+                        //assume we found
+                        int random_fd = getKthElementFD(waiting_queue, random_chosen);
+
+                        Close(random_fd);
+                        removeFromQueue(waiting_queue,random_fd);
+                        drop_number--;
+                    }
+
+
+                }
+
+                /*int drop_number = getQueueSize(waiting_queue)*0.5 + getQueueSize(waiting_queue)%2;
+
+                if (drop_number >= getQueueSize(waiting_queue)) //should happen only when waiting_queue size is zero or one
                 {
                     int is_dropped = 0;
                     while(dequeue(waiting_queue) != -1) {
                         is_dropped = 1;}
 
-                        if (!is_dropped) {
-                            //    printf("close in random  230\n");
-                            Close(connfd);
-                            pthread_mutex_unlock(&queue_lock);
-                            continue; //
+                    if (!is_dropped) {
+
+                        Close(connfd);
+                        pthread_mutex_unlock(&queue_lock);
+                        continue; //
 
                     }
                 }
-                else
-                {
-                    int* fd_arr = getFdArrayQueue(waiting_queue);
-                    for(int i = 0; i < drop_number; i++)
-                    {
-                        int rnd_value = rand() % getQueueSize(waiting_queue);
-                        if(fd_arr[rnd_value] == -1) {
+                else {
+                    int *fd_arr = getFdArrayQueue(waiting_queue);
+                    int size = getQueueSize(waiting_queue);
+
+                    for (int i = 0; i < drop_number ; i++) {
+                        srand(time(NULL));
+                        int rnd_value = rand() % size;
+                        if (fd_arr[rnd_value] == -2) {
                             i--;
-                            continue;}
+                            continue;
+                        }
                         removeFromQueue(waiting_queue, fd_arr[rnd_value]);
                         //    printf("close in 244\n");
                         Close(fd_arr[rnd_value]);
-                        fd_arr[rnd_value] = -1;
+                        fd_arr[rnd_value] = -2;
                     }
                     free(fd_arr);
-                }
+                }*/
             }
             else if(strcmp(schedule_algorithm,"dh")==0)
             {
@@ -240,7 +273,6 @@ int main(int argc, char *argv[])
 
     }
 }
-    
 
 
- 
+
