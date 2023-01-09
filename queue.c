@@ -105,8 +105,7 @@ void destroyQueue(Queue q){
 }
 int getQueueSize(Queue q)
 {
-    //get the count of elements in the queue
-   // assert(q!=NULL);
+
     int count = 0;
 
     Queue curr = q->next;
@@ -118,17 +117,7 @@ int getQueueSize(Queue q)
     return count;
 }
 
-void printQueue(Queue q)
-{
-    Queue iterator = q;
-    while(iterator!=NULL)
-    {
-        printf("%d --> ",iterator->process_fd);
-        fflush(stdout);
-        iterator = iterator->next;
-    }
-    printf("end copy rot\n");
-}
+
 struct timeval getArrivalTime(Queue q,int process_fd)
 {
     struct timeval required_timeval;
@@ -160,23 +149,11 @@ int getQueueHead(Queue q)
     int process_head_fd = curr->process_fd;
     return process_head_fd;
 }
-//change it later
-int* getFdArrayQueue(Queue q)
-{
-    int q_size = getQueueSize(q);
-    if(q_size==0) return NULL;
-    int* fd_arr = (int*) malloc(sizeof(int) * q_size);
-    Queue tmp=q;
-    for(int i = 0; i < q_size; i++)
-    {
-        fd_arr[i] = tmp->next->process_fd;
-        tmp = tmp->next;
-    }
-    return fd_arr;
-}
-int getKthElementFD(Queue q, int k){
-    assert(k!=0);
-    assert(k<= getQueueSize(q));
+
+
+
+int getKthElementQueue(Queue q, int k){
+
     int count =k;
     Queue temp = q;
     while(count!=0)
